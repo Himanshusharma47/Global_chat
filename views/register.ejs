@@ -1,0 +1,76 @@
+<%- include('partials/header') %>
+
+<div style="max-width: 500px; margin: 0 auto;">
+    <div class="card">
+        <h2 style="color: #0056b3; margin-top: 0;">Create Your Account</h2>
+        <p style="color: #666; margin-bottom: 20px;">Join thousands of members worldwide!</p>
+        
+        <% if (error) { %>
+            <div style="background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form action="/register" method="POST">
+            <div class="input-group">
+                <label>Unique User ID (Username)</label>
+                <input type="text" name="username" required placeholder="e.g. harryhunk123" pattern="[a-zA-Z0-9_]+" title="Only letters, numbers, and underscores">
+            </div>
+
+            <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" name="name" required placeholder="e.g. John Doe">
+            </div>
+
+            <div class="input-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required placeholder="john@example.com">
+            </div>
+
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" name="password" required placeholder="At least 6 characters">
+            </div>
+
+            <!-- New Fields for Phase 2 -->
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Gender</label>
+                    <select name="gender" required>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Birthdate</label>
+                    <input type="date" name="birthdate" required>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Country</label>
+                    <select name="country" required>
+                        <option value="">Select Country...</option>
+                        <% if (typeof countries !== 'undefined') { %>
+                            <% countries.forEach(c => { %>
+                                <option value="<%= c %>"><%= c %></option>
+                            <% }) %>
+                        <% } else { %>
+                            <option value="Other">Other</option>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>City</label>
+                    <input type="text" name="city" placeholder="e.g. Paris">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-green" style="width: 100%; padding: 12px; font-size: 1.1rem;">Sign Up Now</button>
+        </form>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

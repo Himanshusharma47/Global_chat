@@ -1,0 +1,235 @@
+<%- include('partials/header') %>
+
+<div class="container chat-container">
+    
+    <!-- LEFT SIDEBAR: FRIENDS LIST -->
+    <div class="chat-sidebar">
+        <div class="chat-header">
+            Messages
+        </div>
+        <div class="friends-list" style="overflow-y: auto; flex: 1;">
+            <% if (friends.length > 0) { %>
+                <% friends.forEach(friend => { %>
+                    <a href="/messages/<%= friend.id %>" style="text-decoration: none; color: inherit;">
+                        <div class="chat-friend-item <%= (currentChatUser && currentChatUser.id == friend.id) ? 'active' : '' %>">
+                            <img src="/uploads/<%= friend.profile_image %>" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div style="overflow: hidden; flex: 1;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= friend.name %></div>
+                                    <% if (friend.unread_count > 0 && (!currentChatUser || currentChatUser.id != friend.id)) { %>
+                                        <span style="background: #28a745; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; font-weight: bold;"><%= friend.unread_count %></span>
+                                    <% } %>
+                                </div>
+                                <div id="friend-status-<%= friend.id %>" class="status-text <%= friend.is_online ? 'online' : 'offline' %>">
+                                    <%= friend.is_online ? 'Online' : 'Offline' %>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                <% }) %>
+            <% } else { %>
+                <div style="padding: 20px; color: #999; text-align: center;">No friends found.</div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: CHAT WINDOW -->
+    <div class="chat-main">
+        
+        <% if (currentChatUser) { %>
+            <!-- Chat Header -->
+            <div class="chat-header" style="background: transparent; border-radius: 0;">
+                <img src="/uploads/<%= currentChatUser.profile_image %>" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <div style="font-weight: bold; font-size: 1.1rem;"><%= currentChatUser.name %></div>
+                    <div id="chat-header-status" style="font-size: 0.8rem; color: <%= currentChatUser.is_online ? '#28a745' : 'gray' %>;">
+                        <%= formatLastSeen(currentChatUser.last_active, currentChatUser.is_online) %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="message-container" class="chat-messages">
+                <% 
+                   let lastDate = '';
+                   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                %>
+                <% messages.forEach(msg => { 
+                    const d = new Date(msg.created_at);
+                    const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
+                    
+                    const hours = d.getHours().toString().padStart(2, '0');
+                    const minutes = d.getMinutes().toString().padStart(2, '0');
+                    const timeStr = `${hours}:${minutes}`;
+                %>
+                    
+                    <% if (dateStr !== lastDate) { %>
+                        <div style="text-align: center; margin: 15px 0; position: relative;">
+                            <span style="background: #eef; color: #555; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">
+                                <%= dateStr %>
+                            </span>
+                        </div>
+                        <% lastDate = dateStr; %>
+                    <% } %>
+
+                    <div style="display: flex; justify-content: <%= msg.sender_id == userId ? 'flex-end' : 'flex-start' %>;">
+                        <div class="msg-bubble <%= msg.sender_id == userId ? 'msg-bubble-me' : 'msg-bubble-other' %>">
+                            <div><%= msg.content %></div>
+                            <div style="font-size: 0.65rem; text-align: right; margin-top: 4px; display: flex; align-items: center; justify-content: flex-end; gap: 4px;" class="<%= msg.sender_id == userId ? 'msg-meta-me' : 'msg-meta-other' %>">
+                                <%= timeStr %>
+                                <% if (msg.sender_id == userId) { %>
+                                    <span><%= msg.is_read ? '✓✓' : '✓' %></span>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <form id="chat-form" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="msg-input" class="chat-input" placeholder="Type a message..." autocomplete="off">
+                    <button type="submit" class="btn-green" style="border-radius: 25px; padding: 10px 25px; font-weight: bold;">Send</button>
+                </form>
+            </div>
+
+        <% } else { %>
+            <!-- Empty State -->
+            <!-- Empty State -->
+            <div class="chat-empty-state">
+                <div style="font-size: 4rem; opacity: 0.2;">💬</div>
+                <h2>Select a conversation</h2>
+            </div>
+        <% } %>
+
+    </div>
+</div>
+
+<!-- Socket.io Client -->
+<script>
+    // socket is already defined in header.ejs
+    const currentUserId = '<%= userId %>';
+    const activeChatUserId = '<%= currentChatUser ? currentChatUser.id : "" %>';
+
+    const container = document.getElementById('message-container');
+
+    function scrollToBottom() {
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    // Initial Scroll
+    window.onload = scrollToBottom;
+
+    if (activeChatUserId) {
+        // Room ID: smaller-larger
+        const ids = [parseInt(currentUserId), parseInt(activeChatUserId)].sort((a,b) => a-b);
+        const roomID = ids.join('-');
+
+        socket.emit('join_room', roomID);
+        console.log('Joining room:', roomID);
+
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('msg-input');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const msg = input.value.trim();
+            if (msg) {
+                // Emit to server
+                socket.emit('send_message', {
+                    room: roomID,
+                    sender_id: currentUserId,
+                    receiver_id: activeChatUserId,
+                    content: msg
+                });
+                input.value = '';
+                input.focus();
+            }
+        });
+
+        socket.on('receive_message', (data) => {
+            const isMe = data.sender_id == currentUserId;
+            
+            // Format Time
+            const d = new Date();
+            const hours = d.getHours().toString().padStart(2, '0');
+            const minutes = d.getMinutes().toString().padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+
+            const rowDiv = document.createElement('div');
+            rowDiv.style.display = 'flex';
+            rowDiv.style.justifyContent = isMe ? 'flex-end' : 'flex-start';
+            rowDiv.style.marginTop = '10px';
+            
+            const bubble = document.createElement('div');
+            bubble.className = isMe ? 'msg-bubble msg-bubble-me' : 'msg-bubble msg-bubble-other';
+            // bubble.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)'; (Covered by class)
+
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = data.content;
+            
+            const metaDiv = document.createElement('div');
+            metaDiv.className = isMe ? 'msg-meta-me' : 'msg-meta-other';
+            metaDiv.style.fontSize = '0.65rem';
+            metaDiv.style.textAlign = 'right';
+            metaDiv.style.marginTop = '4px';
+            metaDiv.style.display = 'flex';
+            metaDiv.style.alignItems = 'center';
+            metaDiv.style.justifyContent = 'flex-end';
+            metaDiv.style.gap = '4px';
+            
+            let tickHtml = '';
+            if(isMe) tickHtml = '<span>✓</span>'; // Default single tick for new msg
+            
+            metaDiv.innerHTML = `${timeStr} ${tickHtml}`;
+
+            bubble.appendChild(contentDiv);
+            bubble.appendChild(metaDiv);
+            
+            rowDiv.appendChild(bubble);
+            container.appendChild(rowDiv);
+            scrollToBottom();
+        });
+    }
+
+    // Register my presence (Handled in header.ejs now)
+    // if (currentUserId) {
+    //    socket.emit('register_user', currentUserId);
+    // }
+
+    // Listen for status updates
+    socket.on('user_status', (data) => {
+        // Update Header if chatting with this user
+        // activeChatUserId is string, data.userId might be int/string
+        if (activeChatUserId && data.userId == activeChatUserId) {
+            const statusDiv = document.getElementById('chat-header-status');
+            if (statusDiv) {
+                if (data.status === 'online') {
+                        statusDiv.textContent = 'Online';
+                        statusDiv.style.color = '#28a745';
+                } else {
+                        // Use provided lastActive text or fallback
+                        statusDiv.textContent = data.lastActive || 'Offline';
+                        statusDiv.style.color = 'gray';
+                }
+            }
+        }
+        
+        // Update Sidebar Friend Item
+        const sidebarStatus = document.getElementById(`friend-status-${data.userId}`);
+        if (sidebarStatus) {
+                if (data.status === 'online') {
+                    sidebarStatus.textContent = 'Online';
+                    sidebarStatus.className = 'status-text online';
+                } else {
+                    sidebarStatus.textContent = 'Offline';
+                    sidebarStatus.className = 'status-text offline';
+                }
+        }
+    });
+</script>
+
+<%- include('partials/footer') %>

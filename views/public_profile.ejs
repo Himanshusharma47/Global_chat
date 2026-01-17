@@ -1,0 +1,118 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="card" style="display: flex; gap: 30px; align-items: flex-start;">
+        <!-- Left: Photo & Actions -->
+        <div style="width: 200px; text-align: center;">
+            <img src="/uploads/<%= profileUser.profile_image %>" style="width: 100%; border-radius: 5px; border: 4px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            
+            <div style="margin-top: 15px;">
+                <% if (sentiment === 'friends') { %>
+                    <button class="btn-green" style="width: 100%; cursor: default;">Your Friend</button>
+                    <a href="/messages/<%= profileUser.id %>" class="btn-green" style="background: #007bff; display: block; margin-top: 10px;">Send Message</a>
+                <% } else if (sentiment === 'pending_sent') { %>
+                    <button class="btn-green" style="background: #aaa; width: 100%;">Request Sent</button>
+                <% } else if (sentiment === 'pending_received') { %>
+                    <form action="/friend/accept" method="POST">
+                        <input type="hidden" name="requester_id" value="<%= profileUser.id %>">
+                        <button type="submit" class="btn-green" style="width: 100%;">Accept Request</button>
+                    </form>
+                <% } else { %>
+                    <form action="/friend/add" method="POST">
+                        <input type="hidden" name="receiver_id" value="<%= profileUser.id %>">
+                        <button type="submit" class="btn-green" style="width: 100%;">Add as Friend</button>
+                    </form>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Right: Info -->
+        <div style="flex: 1;">
+            <h1 style="color: var(--primary-blue); margin-top: 0; display: flex; align-items: center; gap: 10px;">
+                <%= profileUser.name %> 
+                <span id="profile-status-badge" class="profile-status-badge" style="background: <%= profileUser.is_online ? '#28a745' : '#ccc' %>; color: white;">
+                    <%= formatLastSeen(profileUser.last_active, profileUser.is_online) %>
+                </span>
+            </h1>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; color: #555;">
+                <div><strong>Country:</strong> <%= profileUser.country || 'N/A' %></div>
+                <div><strong>City:</strong> <%= profileUser.city || 'N/A' %></div>
+                <div><strong>Gender:</strong> <%= profileUser.gender || 'N/A' %></div>
+                <div><strong>Joined:</strong> Recent</div>
+            </div>
+
+            <h3 class="profile-section-title">About Me</h3>
+            <p style="line-height: 1.6; color: var(--text-main);"><%= profileUser.bio || 'No bio yet.' %></p>
+
+            <h3 class="profile-section-title">Photo Gallery</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;">
+                <% if (gallery.length > 0) { %>
+                    <% gallery.forEach(img => { %>
+                        <img src="/uploads/<%= img.filename %>" style="width: 100%; height: 100px; object-fit: cover; border-radius: 4px;">
+                    <% }) %>
+                <% } else { %>
+                    <p style="color: #999;">No photos uploaded.</p>
+                <% } %>
+            </div>
+
+            <!-- WALL / COMMENTS SECTION -->
+            <h3 class="profile-section-title">Wall Messages</h3>
+            
+            <form action="/comment" method="POST" class="wall-form">
+                <input type="hidden" name="receiver_id" value="<%= profileUser.id %>">
+                <textarea name="content" rows="3" class="wall-textarea" placeholder="Leave a nice message..." required></textarea>
+                <button type="submit" class="btn-green" style="margin-top: 15px;">Post Message</button>
+            </form>
+
+            <div>
+                <% if (comments && comments.length > 0) { %>
+                    <% comments.forEach(comment => { %>
+                        <div class="wall-comment">
+                            <img src="/uploads/<%= comment.sender_image %>" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <div style="margin-bottom: 5px;">
+                                    <a href="/profile/<%= comment.sender_id %>" style="font-weight: bold; text-decoration: none; color: var(--primary-blue);"><%= comment.sender_name %></a>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;"><%= comment.created_at %></span>
+                                </div>
+                                <div style="color: var(--text-main);"><%= comment.content %></div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p style="color: #999;">No wall messages yet. Be the first!</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<!-- Socket.io for Status Updates -->
+<script>
+    // socket is already defined in header.ejs
+    const myUserId = '<%= userId %>';
+    const profileUserId = '<%= profileUser.id %>';
+
+    // Register my presence (Handled in header.ejs now)
+    // if (myUserId) {
+    //    socket.emit('register_user', myUserId);
+    // }
+
+    // Listen for status updates
+    socket.on('user_status', (data) => {
+        if (data.userId == profileUserId) {
+            const badge = document.getElementById('profile-status-badge');
+            
+            if (data.status === 'online') {
+                badge.style.background = '#28a745';
+                badge.textContent = 'Online';
+            } else {
+                badge.style.background = '#ccc';
+                // Use provided lastActive text or fallback
+                badge.textContent = data.lastActive || 'Offline';
+            }
+        }
+    });
+</script>

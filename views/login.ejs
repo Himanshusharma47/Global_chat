@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<div style="max-width: 400px; margin: 0 auto; margin-top: 50px;">
+    <div class="card">
+        <h2 style="color: #0056b3; margin-top: 0; text-align: center;">Member Login</h2>
+        
+        <% if (error) { %>
+            <div style="background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form action="/login" method="POST">
+            <div class="input-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+            </div>
+
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn-green" style="width: 100%; padding: 10px;">Login</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 15px; font-size: 0.9rem;">
+            Forgot password? <a href="#" style="color: #0056b3;">Reset here</a>
+        </p>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

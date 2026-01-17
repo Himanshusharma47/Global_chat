@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+
+<div class="container">
+    <div class="card">
+        <h2>Refine Search</h2>
+        <form action="/search" method="GET" style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <select name="country">
+                <option value="">All Countries</option>
+                <% if (typeof countries !== 'undefined') { %>
+                    <% countries.forEach(c => { %>
+                        <option value="<%= c %>" <%= (typeof query !== 'undefined' && query.country === c) ? 'selected' : '' %>><%= c %></option>
+                    <% }) %>
+                <% } %>
+            </select>
+            <select name="gender" style="padding: 10px;">
+                <option value="">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+            <button type="submit" class="btn-green">Search</button>
+        </form>
+    </div>
+
+    <h3>Search Results</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+        <% if (users.length > 0) { %>
+            <% users.forEach(u => { %>
+                <div class="card" style="text-align: center; padding: 15px;">
+                    <img src="/uploads/<%= u.profile_image %>" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px;">
+                    <h4 style="margin: 5px 0;"><%= u.name %></h4>
+                    <div style="font-size: 0.9rem; color: #666;"><%= u.country || 'Unknown' %></div>
+                    <div style="font-size: 0.8rem; color: #888; margin-bottom: 15px;"><%= u.gender || '' %></div>
+                    
+                    <a href="/profile/<%= u.id %>" class="btn-green" style="background: #0056b3; font-size: 0.9rem;">View Profile</a>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <p>No members found matching criteria.</p>
+        <% } %>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

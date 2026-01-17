@@ -1,0 +1,166 @@
+<%- include('partials/header') %>
+
+<div class="container" style="max-width: 700px;"> <!-- Narrower container for feed look -->
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Global Feed</h2>
+        <a href="/dashboard?tab=gallery" class="btn-green" style="font-size: 0.9rem;">
+            <i class="fas fa-plus"></i> Post Photo
+        </a>
+    </div>
+
+    <% if (posts.length > 0) { %>
+        <% posts.forEach(post => { %>
+            <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 30px;">
+                <!-- Header -->
+                <div style="padding: 15px; display: flex; align-items: center; border-bottom: 1px solid var(--border-color);">
+                    <a href="/profile/<%= post.author_id %>" style="text-decoration: none; display: flex; align-items: center;">
+                        <img src="/uploads/<%= post.profile_image %>" alt="<%= post.name %>" 
+                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 12px; border: 1px solid #e2e8f0;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;"><%= post.name %></div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);"><%= post.country || 'Global Citizen' %> &bull; <%= new Date(post.uploaded_at).toLocaleDateString() %></div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Image -->
+                <div style="background: #000; display: flex; justify-content: center; align-items: center;">
+                    <img src="/uploads/<%= post.filename %>" alt="Post" style="max-width: 100%; max-height: 600px; display: block;">
+                </div>
+
+                <!-- Footer / Actions -->
+                <div style="padding: 15px;">
+                    <!-- Action Buttons Row -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        
+                        <!-- Left Side: Like & Comment Icons -->
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <button onclick="toggleLike(<%= post.id %>)" id="like-btn-<%= post.id %>" style="background: none; border: none; cursor: pointer; font-size: 1.5rem; color: <%= post.user_liked ? '#e11d48' : '#334155' %>; transition: transform 0.2s;">
+                                <i class="<%= post.user_liked ? 'fas' : 'far' %> fa-heart"></i>
+                            </button>
+                            <button onclick="document.getElementById('comment-input-<%= post.id %>').focus()" style="background: none; border: none; cursor: pointer; font-size: 1.4rem; color: #334155;">
+                                <i class="far fa-comment"></i>
+                            </button>
+                        </div>
+
+                        <!-- Right Side: Interaction Buttons -->
+                        <div style="display: flex; gap: 10px;">
+                            <% if (post.author_id != userId) { %>
+                                <% if (!post.friendship_status) { %>
+                                    <form action="/add-friend" method="POST" style="display: inline;">
+                                        <input type="hidden" name="receiver_id" value="<%= post.author_id %>">
+                                        <button type="submit" class="btn-sm-outline">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </form>
+                                <% } %>
+                                <a href="/messages/<%= post.author_id %>" class="btn-sm-outline">
+                                    <i class="fas fa-paper-plane"></i>
+                                </a>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Like Count -->
+                    <div style="font-weight: 600; margin-bottom: 8px; font-size: 0.95rem;">
+                        <span id="likes-count-<%= post.id %>"><%= post.like_count %></span> likes
+                    </div>
+
+                    <!-- Caption -->
+                    <div style="margin-bottom: 8px; font-size: 0.95rem;">
+                        <span style="font-weight: 700; margin-right: 5px;"><%= post.name %></span>
+                        <%= post.description %>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <% if (post.comments && post.comments.length > 0) { %>
+                        <div style="margin-bottom: 10px;">
+                            <% if (post.comments.length > 3) { %>
+                                <div style="color: var(--text-muted); font-size: 0.9rem; cursor: pointer; margin-bottom: 5px;">
+                                    View all <%= post.comments.length %> comments
+                                </div>
+                            <% } %>
+                            
+                            <% post.comments.slice(-3).forEach(comment => { %>
+                                <div style="font-size: 0.9rem; margin-bottom: 4px;">
+                                    <span style="font-weight: 600; margin-right: 5px;"><%= comment.username %></span>
+                                    <span><%= comment.content %></span>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } %>
+                    
+                    <!-- Comment Input -->
+                    <form action="/comment/<%= post.id %>" method="POST" style="display: flex; align-items: center; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
+                        <input type="text" id="comment-input-<%= post.id %>" name="content" placeholder="Add a comment..." required 
+                               style="border: none; background: none; flex: 1; outline: none; font-size: 0.9rem;">
+                        <button type="submit" style="background: none; border: none; color: var(--primary-blue); font-weight: 600; cursor: pointer;">Post</button>
+                    </form>
+                </div>
+            </div>
+        <% }) %>
+    <% } else { %>
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <i class="fas fa-images" style="font-size: 3rem; margin-bottom: 15px; color: #cbd5e1;"></i>
+            <h3>No posts yet!</h3>
+            <p>Be the first to upload a photo in your gallery.</p>
+            <a href="/dashboard?tab=gallery" class="btn-green">Upload Photo</a>
+        </div>
+    <% } %>
+
+</div>
+
+<script>
+    async function toggleLike(postId) {
+        const btn = document.getElementById(`like-btn-${postId}`);
+        const icon = btn.querySelector('i');
+        const countSpan = document.getElementById(`likes-count-${postId}`);
+        
+        try {
+            const response = await fetch(`/like/${postId}`, { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.liked) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    icon.style.color = '#e11d48';
+                    countSpan.innerText = parseInt(countSpan.innerText) + 1;
+                    
+                    // Animation
+                    btn.style.transform = 'scale(1.2)';
+                    setTimeout(() => btn.style.transform = 'scale(1)', 200);
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    icon.style.color = '#334155';
+                    countSpan.innerText = Math.max(0, parseInt(countSpan.innerText) - 1);
+                }
+            }
+        } catch (err) {
+            console.error('Error liking post:', err);
+        }
+    }
+</script>
+
+<style>
+    .btn-sm-outline {
+        background: none; 
+        border: 1px solid var(--border-color); 
+        padding: 6px 10px; 
+        border-radius: 50%;
+        cursor: pointer; 
+        color: var(--text-main); 
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-sm-outline:hover {
+        border-color: var(--text-main);
+        background-color: var(--bg-body);
+    }
+</style>
+
+<%- include('partials/footer') %>
